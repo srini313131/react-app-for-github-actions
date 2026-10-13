@@ -11,6 +11,12 @@ React 19 + TypeScript + Vite 8 single-page app. This is a learning project: the 
 - Let me do the hands-on account steps (AWS console/CLI login, GitHub settings) myself; give exact steps.
 - After each stage, add to `docs/interview-notes.md`: the concept, what we built, likely interview questions with model answers, and ask me a few mock questions.
 
+## Plan docs
+
+- Every feature or roadmap stage is planned before it is built. Once I approve the plan, save it as `docs/plans/NN-short-name.md` (numbered in order, e.g. `01-github-oidc.md`) before writing any code.
+- Each plan doc has: context (why), approach, files to change, verification steps, and a status line (`Planned`, `In progress`, `Done`).
+- Keep the doc current: update the status as work progresses, and note anything that ended up different from the plan and why.
+
 ## Commands
 
 - `npm run dev` — local dev server
@@ -27,6 +33,7 @@ Run lint, test and build before committing.
 - `vite.config.ts` — Vite and Vitest config
 - `.github/workflows/ci.yml` — CI: install, lint, test, build, upload `dist` artifact
 - `infra/` — CloudFormation templates (to be added)
+- `docs/plans/` — one plan doc per feature or stage (to be added)
 - `docs/interview-notes.md` — interview notes per stage (to be added)
 
 ## Conventions
