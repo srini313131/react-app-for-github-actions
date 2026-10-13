@@ -1,0 +1,24 @@
+# Temporary (stage 1): proves GitHub Actions can assume the AWS deploy role
+# through OIDC. Removed once the real deploy job exists in stage 3.
+name: AWS identity check
+
+on:
+  push:
+    branches: [main]
+  # Manual runs, so the check can also be tried from a branch other than main
+  # to see AWS refuse it.
+  workflow_dispatch:
+
+permissions:
+  id-token: write # lets the job request the signed OIDC token from GitHub
+  contents: read
+
+jobs:
+  whoami:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - run: aws sts get-caller-identity

@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm test)",
+      "Bash(npm test *)",
+      "Bash(npm run lint)",
+      "Bash(npm run build)",
+      "Bash(npm run test:watch)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git show *)",
+      "Bash(git branch --show-current)",
+      "Bash(git branch -a)",
+      "Bash(aws sts get-caller-identity *)",
+      "Bash(aws cloudformation describe-* *)",
+      "Bash(aws cloudformation list-* *)",
+      "Bash(aws cloudformation validate-template *)",
+      "Bash(aws s3 ls *)",
+      "Bash(aws cloudfront get-* *)",
+      "Bash(aws cloudfront list-* *)",
+      "Bash(aws iam get-* *)",
+      "Bash(aws iam list-* *)"
+    ]
+  }
+}
