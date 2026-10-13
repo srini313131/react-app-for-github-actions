@@ -32,9 +32,10 @@ Run lint, test and build before committing.
 - `src/setupTests.ts` — jest-dom matchers and RTL cleanup
 - `vite.config.ts` — Vite and Vitest config
 - `.github/workflows/ci.yml` — CI: install, lint, test, build, upload `dist` artifact
-- `infra/` — CloudFormation templates (to be added)
-- `docs/plans/` — one plan doc per feature or stage (to be added)
-- `docs/interview-notes.md` — interview notes per stage (to be added)
+- `.github/workflows/aws-identity-check.yml` — temporary stage 1 check that the OIDC role can be assumed
+- `infra/` — CloudFormation templates
+- `docs/plans/` — one plan doc per feature or stage; `README.md` there is the index
+- `docs/interview-notes.md` — interview notes per stage
 
 ## Conventions
 
