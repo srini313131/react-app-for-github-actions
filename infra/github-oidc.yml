@@ -8,9 +8,17 @@ Parameters:
   GitHubOwner:
     Type: String
     Default: srini313131
+  GitHubOwnerId:
+    Type: String
+    Default: '52782561'
+    Description: Numeric GitHub account ID. Unlike the name, it never changes or gets reused.
   GitHubRepo:
     Type: String
     Default: react-app-for-github-actions
+  GitHubRepoId:
+    Type: String
+    Default: '1416544802'
+    Description: Numeric GitHub repository ID.
   Branch:
     Type: String
     Default: main
@@ -45,7 +53,9 @@ Resources:
                 # aud: the token was issued for AWS STS, not some other service.
                 token.actions.githubusercontent.com:aud: sts.amazonaws.com
                 # sub: the run comes from this repository and this branch.
-                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOwner}/${GitHubRepo}:ref:refs/heads/${Branch}
+                # GitHub includes the numeric owner and repository IDs after each
+                # name, so a deleted and re-registered name cannot match.
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOwner}@${GitHubOwnerId}/${GitHubRepo}@${GitHubRepoId}:ref:refs/heads/${Branch}
       # Permissions policy: WHAT the role may do once assumed.
       Policies:
         - PolicyName: deploy-my-app
