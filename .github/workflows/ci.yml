@@ -27,3 +27,9 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+      - name: Upload dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
