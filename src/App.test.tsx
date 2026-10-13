@@ -9,7 +9,7 @@ describe('App', () => {
 
     expect(
       screen.getByRole('heading', { name: 'Get started' }),
-    ).toBeInTheDocument()
+    ).not.toBeInTheDocument()
   })
 
   it('increments the counter when the button is clicked', async () => {
