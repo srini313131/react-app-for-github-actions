@@ -1,6 +1,6 @@
 # 01 — GitHub-to-AWS identity (OIDC)
 
-**Status:** In progress
+**Status:** Done
 
 ## Context
 
@@ -58,5 +58,7 @@ Separate AWS accounts per environment under AWS Organizations, roles created by 
 - The S3 and CloudFront action lists are a best estimate of what stages 2-3 need. If a deploy fails with `AccessDenied`, the missing action is added here and this stack is redeployed.
 - Changed: the identity check is its own temporary workflow (`.github/workflows/aws-identity-check.yml`) instead of a step in `ci.yml`. A step in CI would fail on every pull request, because the role only trusts `main`. The separate workflow runs on pushes to `main` and can be started by hand from any branch to see the refusal.
 - Step 3 done: stack `my-app-github-oidc` is `CREATE_COMPLETE`. Role ARN: `arn:aws:iam::263935782586:role/my-app-github-deploy`.
-- Steps 4-5 pending: set the `AWS_ROLE_ARN` repository variable, merge the identity-check workflow to `main`, and confirm it passes on `main` and is refused on another branch.
 - Found in verification: the first run on `main` was refused with `Not authorized to perform sts:AssumeRoleWithWebIdentity`. CloudTrail showed the `sub` GitHub actually sends is `repo:srini313131@52782561/react-app-for-github-actions@1416544802:ref:refs/heads/main` — it carries the numeric owner and repository IDs, which the trust policy did not include. The template now takes `GitHubOwnerId` and `GitHubRepoId` and matches the full value.
+- Steps 4-5 done: `AWS_ROLE_ARN` is set as a repository variable and the stack was redeployed with the corrected trust policy. The "AWS identity check" workflow passes on `main` (reported from the Actions tab).
+- Not yet observed: the refusal from a branch other than `main`. To see it, run the workflow by hand from another branch (Actions -> AWS identity check -> Run workflow); it should fail with `Not authorized to perform sts:AssumeRoleWithWebIdentity`.
+- First run failed with `Could not load credentials from any providers`: the `AWS_ROLE_ARN` variable was not being found, so the action had no role to request.

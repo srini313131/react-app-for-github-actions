@@ -52,7 +52,7 @@ Run lint, test and build before committing.
 
 ## Deployment roadmap
 
-1. Identity: GitHub OIDC provider and least-privilege deploy role
+1. Identity: GitHub OIDC provider and least-privilege deploy role — done
 2. Hosting as code: private S3, CloudFront with OAC, security headers
 3. Continuous deployment to one environment on push to `main`
 4. Staging and production with an approval gate, same artifact promoted
