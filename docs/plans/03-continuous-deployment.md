@@ -1,6 +1,6 @@
 # 03 — Continuous deployment
 
-**Status:** In progress
+**Status:** Done
 
 **Depends on:** 01, 02
 
@@ -58,7 +58,13 @@ Artifacts stored in a versioned registry or bucket with retention, deployment to
 
 ## Progress and changes from the plan
 
-- Workflow written: `deploy` job added to `ci.yml`, concurrency changed, identity-check workflow deleted. Not yet run; the first run happens when this is merged to `main`.
+- Workflow written: `deploy` job added to `ci.yml`, concurrency changed, identity-check workflow deleted.
 - Decided: old files under `/assets/` are not deleted on deploy. Their names contain a content hash, so they never clash with new ones, and a visitor who loaded the previous `index.html` can still fetch the files it points to. The cost is that they accumulate; a lifecycle rule would expire them.
 - Decided: the deploy role is not given `cloudformation:DeleteStack`. If the first creation fails, the stack is left in `ROLLBACK_COMPLETE` and has to be deleted from a laptop before retrying: `aws cloudformation delete-stack --stack-name my-app-staging --region us-east-1`.
-- Expected: this is the first real use of the deploy role's permissions, which were a best estimate. On `AccessDenied`, the missing action is added to `infra/github-oidc.yml`, that stack is redeployed from a laptop, and the job is re-run.
+- The deploy role's permission list was enough on the first run: no `AccessDenied`, no change to `infra/github-oidc.yml`.
+- First deploy (merge of pull request #7): stack `my-app-staging` reached `CREATE_COMPLETE` with no failed events. Site: https://d1qpoq0ceicfnl.cloudfront.net. Checked with `curl`:
+  - `/` returns 200 with `strict-transport-security`, `x-frame-options: DENY`, `x-content-type-options: nosniff`, `referrer-policy`, and `cache-control: no-cache`
+  - `/assets/index-CVtPK4EU.js` returns `cache-control: public, max-age=31536000, immutable`
+  - `http://` returns 301 to `https://`
+  - The bucket's direct S3 address returns 403
+- Second deploy test: the heading in `src/App.tsx` changed to "Deployed by GitHub Actions" (test updated to match), to see a code change reach the live site through the pipeline.
