@@ -1,6 +1,6 @@
 # 03 — Continuous deployment
 
-**Status:** Planned
+**Status:** In progress
 
 **Depends on:** 01, 02
 
@@ -33,6 +33,7 @@ Changes to `.github/workflows/ci.yml`:
 ## Files
 
 - `.github/workflows/ci.yml`
+- `.github/workflows/aws-identity-check.yml` (deleted)
 
 ## Verification
 
@@ -54,3 +55,10 @@ Changes to `.github/workflows/ci.yml`:
 ## What a larger company does differently
 
 Artifacts stored in a versioned registry or bucket with retention, deployment tooling separated from CI (for example a CD system pulling approved artifacts), change records and deployment notifications to chat.
+
+## Progress and changes from the plan
+
+- Workflow written: `deploy` job added to `ci.yml`, concurrency changed, identity-check workflow deleted. Not yet run; the first run happens when this is merged to `main`.
+- Decided: old files under `/assets/` are not deleted on deploy. Their names contain a content hash, so they never clash with new ones, and a visitor who loaded the previous `index.html` can still fetch the files it points to. The cost is that they accumulate; a lifecycle rule would expire them.
+- Decided: the deploy role is not given `cloudformation:DeleteStack`. If the first creation fails, the stack is left in `ROLLBACK_COMPLETE` and has to be deleted from a laptop before retrying: `aws cloudformation delete-stack --stack-name my-app-staging --region us-east-1`.
+- Expected: this is the first real use of the deploy role's permissions, which were a best estimate. On `AccessDenied`, the missing action is added to `infra/github-oidc.yml`, that stack is redeployed from a laptop, and the job is re-run.
