@@ -72,7 +72,70 @@ _Asked in the session; answers and corrections to be added._
 
 ## Stage 2 — Hosting infrastructure as code
 
-_To be written after the stage is complete._
+### Concept
+
+A built React app is a folder of static files. The standard AWS way to host it is a private S3 bucket for storage with CloudFront in front as the only public entrance. CloudFront provides HTTPS, copies of the files close to users, and security headers; the bucket itself can't be reached from the internet. All of it is described in a template, so it can be reviewed, repeated for another environment, and removed cleanly.
+
+Plain version: S3 is the stock room, CloudFront is the shop counter. Customers only ever meet the counter, and the stock room door opens only for this shop's counter staff.
+
+### What we built
+
+`infra/site.yml`, one template used for every environment (parameter `Environment`: `staging` or `prod`), with five resources:
+
+- **Bucket** — all public access blocked, versioning on, encrypted, ACLs disabled
+- **Origin Access Control (OAC)** — makes CloudFront sign its requests to S3
+- **Response headers policy** — HSTS, `X-Content-Type-Options`, `X-Frame-Options: DENY`, `Referrer-Policy`
+- **Distribution** — the public address; redirects HTTP to HTTPS, serves `index.html` at `/`, caches with the managed `CachingOptimized` policy, cheapest price class
+- **Bucket policy** — allows `s3:GetObject` to the CloudFront service only when the request comes from this distribution
+
+Outputs: bucket name, distribution ID, and the site's domain name — the three values the deploy job needs.
+
+Verified by validating the template and previewing it with a change set, without creating anything.
+
+### Questions and answers
+
+**Why put CloudFront in front of S3 instead of using S3 static website hosting?**
+S3 website hosting needs a public bucket and serves plain HTTP only. With CloudFront the bucket stays private, the site gets HTTPS, content is cached at edge locations near users, and there is one place to add security headers, a custom domain, or a firewall later.
+
+**How does CloudFront read a private bucket?**
+Through Origin Access Control. CloudFront signs each request to S3 with SigV4, and the bucket policy allows the `cloudfront.amazonaws.com` service to read objects, with a condition that `AWS:SourceArn` equals this distribution's ARN.
+
+**What is the `SourceArn` condition for?**
+Without it, the policy would allow the CloudFront service as a whole, meaning any distribution in any AWS account could be pointed at the bucket and read it. This is the confused deputy problem: a trusted service being used by the wrong party. The condition narrows the permission to one specific distribution.
+
+**OAC or OAI?**
+OAI (origin access identity) is the older mechanism. OAC replaces it: it uses short-lived signed requests, supports buckets encrypted with KMS keys, and works in all regions. AWS recommends OAC for anything new.
+
+**Why is versioning turned on?**
+Each deploy overwrites files. With versioning, the previous copies are kept, so a bad or accidental overwrite or delete can be undone. It is the fallback when rebuilding an old release isn't possible.
+
+**What do the security headers do?**
+HSTS tells browsers to use only HTTPS for the site. `X-Content-Type-Options: nosniff` stops browsers guessing file types. `X-Frame-Options: DENY` stops other sites embedding the page, which prevents clickjacking. `Referrer-Policy` limits what the site reveals about itself when users follow links out.
+
+**What does infrastructure as code give you over clicking in the console?**
+The setup is in version control, so changes are reviewed in pull requests and there is a history. It is repeatable: staging and production come from the same template, so they can't quietly differ. It is removable as one unit. And changes can be previewed before they happen.
+
+**What is a change set?**
+A preview. CloudFormation compares the template with what exists and lists what it would add, change or replace, without doing it. It matters most for updates, where a small-looking edit can mean a resource is replaced.
+
+**Why one template with a parameter instead of one template per environment?**
+So the environments stay identical in structure. Anything that differs has to be a visible parameter. Separate copies drift apart over time, and then staging stops being a reliable rehearsal for production.
+
+**Why doesn't the bucket have a fixed name?**
+Bucket names are unique across all of AWS, so a fixed name can collide with someone else's, and a named resource can't be replaced by CloudFormation without first being deleted. Letting CloudFormation generate the name avoids both; anything that needs the name reads it from the stack's outputs.
+
+### At larger scale
+
+- A custom domain with an ACM certificate, and DNS in Route 53
+- AWS WAF attached to the distribution for rate limiting and common attack rules
+- Access logs sent to a central logging account
+- A Content-Security-Policy header, tuned to the app
+- Shared building blocks (CDK constructs or Terraform modules) owned by a platform team, so each app doesn't write its own template
+- A lifecycle rule expiring old object versions, so versioning doesn't grow storage forever
+
+### Mock questions
+
+_Asked in the session; answers and corrections to be added._
 
 ## Stage 3 — Continuous deployment
 

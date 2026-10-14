@@ -1,6 +1,6 @@
 # 02 — Hosting infrastructure as code
 
-**Status:** Planned
+**Status:** Done
 
 **Depends on:** 01
 
@@ -47,3 +47,11 @@ The stack is not deployed in this stage by hand; stage 3's pipeline deploys it. 
 ## What a larger company does differently
 
 Custom domain with an ACM certificate, WAF in front of CloudFront, access logging to a central logging account, shared modules (CDK constructs or Terraform modules) owned by a platform team rather than a template per app.
+
+## Progress and changes from the plan
+
+- `infra/site.yml` written. `validate-template` passes.
+- Change set check done against a throwaway stack name (`my-app-site-template-check`) rather than `my-app-staging`, so the real stack name stays untouched until the pipeline creates it. The change set listed the five expected resources (bucket, bucket policy, origin access control, response headers policy, distribution). It was not executed, and the empty stack shell was deleted afterwards.
+- Added beyond the plan: `OwnershipControls: BucketOwnerEnforced` on the bucket (turns ACLs off, so access is decided by the bucket policy alone), HTTP/2 and HTTP/3, IPv6, and compression on the distribution.
+- The bucket has no fixed name. CloudFormation generates `<stack name>-sitebucket-<random>`, which is globally unique and falls inside the `my-app-staging-*` / `my-app-prod-*` prefixes the deploy role is allowed to manage.
+- Nothing is deployed yet. The first real creation happens in stage 3 through the pipeline, which is also the first real test of the deploy role's permissions.

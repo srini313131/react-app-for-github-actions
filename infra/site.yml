@@ -1,0 +1,133 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Static site hosting for my-app: a private S3 bucket served through
+  CloudFront. One stack per environment, deployed by the pipeline.
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [staging, prod]
+    Description: Which environment this stack is. Used in names and tags.
+
+Resources:
+  # Storage for the built files. Nothing reads it directly from the internet.
+  # No BucketName: CloudFormation generates one from the stack name, which
+  # keeps it globally unique and inside the deploy role's allowed prefix.
+  SiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      # Keeps earlier copies of overwritten files: the safety net for rollback.
+      VersioningConfiguration:
+        Status: Enabled
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      OwnershipControls:
+        Rules:
+          - ObjectOwnership: BucketOwnerEnforced
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # Lets CloudFront sign its requests to S3, so the bucket can tell them
+  # apart from everyone else's.
+  OriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub ${AWS::StackName}-oac
+        Description: !Sub CloudFront access to the my-app ${Environment} bucket
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  # Headers CloudFront adds to every response.
+  SecurityHeadersPolicy:
+    Type: AWS::CloudFront::ResponseHeadersPolicy
+    Properties:
+      ResponseHeadersPolicyConfig:
+        Name: !Sub ${AWS::StackName}-security-headers
+        SecurityHeadersConfig:
+          # Browsers must use HTTPS for this site for the next year.
+          StrictTransportSecurity:
+            AccessControlMaxAgeSec: 31536000
+            IncludeSubdomains: true
+            Override: true
+          # Browsers must not guess a file's type from its content.
+          ContentTypeOptions:
+            Override: true
+          # The site may not be embedded in a frame on another site.
+          FrameOptions:
+            FrameOption: DENY
+            Override: true
+          ReferrerPolicy:
+            ReferrerPolicy: strict-origin-when-cross-origin
+            Override: true
+
+  # The public entry point.
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub my-app ${Environment}
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        # North America and Europe edge locations only: the cheapest class.
+        PriceClass: PriceClass_100
+        Origins:
+          - Id: site-bucket
+            DomainName: !GetAtt SiteBucket.RegionalDomainName
+            OriginAccessControlId: !GetAtt OriginAccessControl.Id
+            # Required for an S3 origin; left empty because OAC replaces
+            # the older origin access identity.
+            S3OriginConfig:
+              OriginAccessIdentity: ''
+        DefaultCacheBehavior:
+          TargetOriginId: site-bucket
+          ViewerProtocolPolicy: redirect-to-https
+          AllowedMethods: [GET, HEAD]
+          Compress: true
+          # AWS managed policy "CachingOptimized".
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          ResponseHeadersPolicyId: !Ref SecurityHeadersPolicy
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  # The bucket's door rule: only CloudFront may read, and only when the
+  # request comes from this distribution.
+  SiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref SiteBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowCloudFrontRead
+            Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub ${SiteBucket.Arn}/*
+            Condition:
+              StringEquals:
+                AWS:SourceArn: !Sub arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}
+
+Outputs:
+  BucketName:
+    Description: Where the pipeline uploads the built files
+    Value: !Ref SiteBucket
+  DistributionId:
+    Description: Used by the pipeline to clear the cache after a deploy
+    Value: !Ref Distribution
+  DistributionDomainName:
+    Description: The site's public address
+    Value: !GetAtt Distribution.DomainName
