@@ -6,9 +6,11 @@ on:
   pull_request:
     branches: [main]
 
+# A newer pull request run replaces an older one. Runs on main are never
+# cancelled: a deploy must not be cut off halfway through a stack update.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
@@ -34,3 +36,74 @@ jobs:
           name: dist
           path: dist/
           retention-days: 7
+
+  deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # lets the job request the signed OIDC token from GitHub
+      contents: read
+    env:
+      STACK_NAME: my-app-staging
+    steps:
+      # Only needed for infra/site.yml; the app is not rebuilt here.
+      - uses: actions/checkout@v5
+
+      # The exact files the build job tested and built.
+      - name: Download dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Create or update the hosting stack
+        run: |
+          aws cloudformation deploy \
+            --stack-name "$STACK_NAME" \
+            --template-file infra/site.yml \
+            --parameter-overrides Environment=staging \
+            --no-fail-on-empty-changeset
+
+      - name: Read stack outputs
+        run: |
+          output() {
+            aws cloudformation describe-stacks --stack-name "$STACK_NAME" \
+              --query "Stacks[0].Outputs[?OutputKey=='$1'].OutputValue" --output text
+          }
+          {
+            echo "BUCKET=$(output BucketName)"
+            echo "DISTRIBUTION_ID=$(output DistributionId)"
+            echo "SITE_DOMAIN=$(output DistributionDomainName)"
+          } >> "$GITHUB_ENV"
+
+      # File names under assets/ contain a hash of their content, so a given
+      # name never changes: browsers may keep them for a year. Uploaded first
+      # so the new index.html never points at files that are not there yet.
+      # Old ones are left in place for visitors still on the previous page.
+      - name: Upload hashed assets
+        run: |
+          aws s3 sync dist/assets "s3://$BUCKET/assets" \
+            --cache-control "public, max-age=31536000, immutable"
+
+      # index.html keeps the same name on every deploy, so browsers must
+      # check for a new copy each time.
+      - name: Upload everything else
+        run: |
+          aws s3 sync dist "s3://$BUCKET" \
+            --exclude "assets/*" \
+            --cache-control "no-cache" \
+            --delete
+
+      - name: Clear the CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id "$DISTRIBUTION_ID" --paths "/*"
+
+      - name: Write the site URL to the job summary
+        run: echo "Deployed to https://$SITE_DOMAIN" >> "$GITHUB_STEP_SUMMARY"
