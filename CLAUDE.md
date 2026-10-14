@@ -52,8 +52,8 @@ Run lint, test and build before committing.
 ## Deployment roadmap
 
 1. Identity: GitHub OIDC provider and least-privilege deploy role — done
-2. Hosting as code: private S3, CloudFront with OAC, security headers — template done (`infra/site.yml`), first deployed in stage 3
-3. Continuous deployment to one environment on push to `main`
+2. Hosting as code: private S3, CloudFront with OAC, security headers — done (`infra/site.yml`, deployed as stack `my-app-staging`)
+3. Continuous deployment to one environment on push to `main` — done; staging is https://d1qpoq0ceicfnl.cloudfront.net
 4. Staging and production with an approval gate, same artifact promoted
 5. Operations: rollback, logging and alarms, branch protection
 

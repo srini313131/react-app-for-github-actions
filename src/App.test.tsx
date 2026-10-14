@@ -8,7 +8,7 @@ describe('App', () => {
     render(<App />)
 
     expect(
-      screen.getByRole('heading', { name: 'Get started' }),
+      screen.getByRole('heading', { name: 'Deployed by GitHub Actions' }),
     ).toBeInTheDocument()
   })
 
