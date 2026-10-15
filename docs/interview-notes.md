@@ -203,7 +203,65 @@ _Asked in the session; answers and corrections to be added._
 
 ## Stage 4 — Staging and production
 
-_To be written after the stage is complete._
+### Concept
+
+Changes reach users in two steps. Every merge deploys to staging automatically, where it can be seen running; production then waits for a person to approve, and receives the exact same build that staging got. Each environment has its own AWS role, so a credential for staging can't change production.
+
+Plain version: one recipe card for "stock the shop", used for two shops. The rehearsal shop is restocked as soon as new stock passes inspection; the real shop is restocked with the same boxes only after a manager signs off, and each shop's key opens only its own door.
+
+### What we built
+
+- **Two stacks from one template:** `my-app-staging` and `my-app-prod`, both from `infra/site.yml`, differing only in the `Environment` parameter
+- **Two GitHub Environments:** `staging` (no rules) and `prod` (required reviewer); both accept deployments from `main` only, and each holds its own `AWS_ROLE_ARN` variable
+- **Two roles:** `my-app-deploy-staging` and `my-app-deploy-prod`. Each trusts only `sub` = `repo:…:environment:<name>` and can change only its own stack and bucket
+- **A reusable workflow:** `.github/workflows/deploy.yml` (`on: workflow_call`, input `environment`). `ci.yml` calls it as `deploy-staging` after `build`, then as `deploy-prod` after staging succeeds. Both download the same `dist` artifact
+- Per-environment `concurrency`, so two deploys to the same environment never overlap
+
+Verified: the prod job paused for approval; both sites serve the same hashed asset file; the IAM policy simulator shows the staging role is denied on prod resources.
+
+### Questions and answers
+
+**Walk me through how a change reaches production.**
+A pull request runs build and tests only. On merge to `main`, the build job produces one artifact. The staging deploy picks it up automatically. If that succeeds, the production job starts but pauses on the `prod` environment's approval rule. A reviewer checks staging and approves, and the same artifact is deployed to production.
+
+**Why must production get the same artifact as staging?**
+Staging is only evidence if production runs exactly what was tested there. Rebuilding for production could produce something different — a new dependency version, a different build machine — and then staging proved nothing. We verified it: both sites load `index-CLkFBzqh.js`.
+
+**How does one workflow deploy to two environments?**
+It's a reusable workflow, like a function with an `environment` parameter, called twice. The input picks the stack name and the CloudFormation parameter. It also sets the job's `environment:`, which makes GitHub apply that environment's protection rules, expose that environment's variables (so `vars.AWS_ROLE_ARN` resolves to a different role), and put `environment:<name>` in the OIDC token.
+
+**How does the OIDC `sub` claim change when a job uses an environment?**
+Without an environment it names the branch (`ref:refs/heads/main`). With one, it names the environment (`environment:prod`). That's why the prod role can trust "the prod environment" — and the prod environment only lets jobs through from `main` and after approval. The trust policy and GitHub's rules together form the gate.
+
+**Why separate roles per environment instead of one role for both?**
+Blast radius. If staging's credentials were misused, or a staging deploy went wrong, it can't touch production. Least privilege applies per environment, not just per application.
+
+**Is the separation complete in your setup?**
+Not quite. S3 and CloudFormation are separated by resource name, but CloudFront permissions are `Resource: '*'` in both roles, because distribution IDs don't exist until creation. Full separation would come from a separate AWS account per environment, which is the standard enterprise answer.
+
+**What should an approver check before approving production?**
+That staging deployed successfully, the change works in staging, nothing unexpected is in the diff, and it's a sensible time to release. An approval with no check is just a delay; the value is the look at staging.
+
+**What happens if the approval is rejected?**
+The production job doesn't run, production stays on the previous version, and staging keeps the new one. The next merge produces a new run with a new approval request.
+
+**How do you handle configuration that differs between environments?**
+Keep the structure identical and make the differences explicit inputs: here the `Environment` parameter in the template and the `AWS_ROLE_ARN` variable per GitHub Environment. Anything not expressed as a parameter is guaranteed identical.
+
+**How did you replace the old role without breaking deploys?**
+Added the new roles alongside the old one first, switched the workflow over, confirmed in CloudTrail that runs were using the new roles, and only then removed the old one. Expand, migrate, then contract.
+
+### At larger scale
+
+- A separate AWS account per environment under AWS Organizations, so isolation doesn't depend on resource-name patterns
+- More environments: dev, QA, pre-production
+- Automated gates — smoke tests, synthetic checks, error-rate comparisons — instead of, or before, a human approval
+- Change-management records and approval by a release manager or change advisory board
+- Progressive delivery in production: canary releases to a small percentage of users first
+
+### Mock questions
+
+_Asked in the session; answers and corrections to be added._
 
 ## Stage 5 — Operations: rollback, monitoring, guardrails
 

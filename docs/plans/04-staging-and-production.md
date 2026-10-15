@@ -1,6 +1,6 @@
 # 04 — Staging and production
 
-**Status:** In progress
+**Status:** Done
 
 **Depends on:** 03
 
@@ -57,4 +57,8 @@ A separate AWS account per environment, more environments (dev, QA, pre-prod), a
 - Added: both GitHub Environments only accept deployments from `main`, in addition to the approval on `prod`.
 - Added: per-environment `concurrency` on the deploy job, so two deploys to one environment never overlap.
 - Limitation: CloudFront permissions are `Resource: '*'` in both roles, because distribution IDs don't exist until creation. The staging role could in principle change the prod distribution. S3 and CloudFormation are fully separated. Closing this needs separate AWS accounts per environment, or tag-based conditions.
-- Important: the GitHub Environments must exist (with the approval rule) **before** this is merged. If a workflow names an environment that doesn't exist, GitHub creates it with no rules, and prod would deploy without waiting.
+- Important: the GitHub Environments must exist (with the approval rule) **before** this is merged. If a workflow names an environment that doesn't exist, GitHub creates it with no rules, and prod would deploy without waiting. They were created before the merge.
+- Verified: `aws iam simulate-principal-policy` shows the staging role is allowed `cloudformation:UpdateStack` and `s3:PutObject` on staging resources and implicitly denied both on prod resources.
+- First run after merging pull request #9: staging deployed automatically, `deploy-prod` waited for review, and after approval stack `my-app-prod` reached `CREATE_COMPLETE`. Prod: https://d1v74xn41zdn4.cloudfront.net. Both sites serve `assets/index-CLkFBzqh.js`, the same artifact.
+- Follow-up done in this change: CloudTrail showed every run since the merge used the new roles (`environment:staging` / `environment:prod`), so the stage 1 role `my-app-github-deploy` and its `Branch` parameter were removed from the template.
+- Not yet done: rejecting an approval to see prod stay unchanged (optional).
