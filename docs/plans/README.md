@@ -11,7 +11,7 @@ Goal: host this app on a private S3 bucket behind CloudFront, deployed by GitHub
 | 01 | [GitHub-to-AWS identity (OIDC)](01-github-oidc.md) | Done |
 | 02 | [Hosting infrastructure as code](02-hosting-infrastructure.md) | Done |
 | 03 | [Continuous deployment](03-continuous-deployment.md) | Done |
-| 04 | [Staging and production](04-staging-and-production.md) | Planned |
+| 04 | [Staging and production](04-staging-and-production.md) | In progress |
 | 05 | [Operations: rollback, monitoring, guardrails](05-operations.md) | Planned |
 
 ## Target architecture
