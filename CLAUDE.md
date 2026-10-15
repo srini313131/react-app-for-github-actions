@@ -47,7 +47,7 @@ Run lint, test and build before committing.
 ## AWS
 
 - Region `us-east-1`; hosting target is a private S3 bucket behind CloudFront.
-- Infrastructure is defined in CloudFormation and deployed by GitHub Actions through an OIDC role — no long-lived AWS keys in GitHub.
+- Infrastructure is defined in CloudFormation and deployed by GitHub Actions through OIDC roles — no long-lived AWS keys in GitHub. One role per GitHub Environment (`my-app-deploy-staging`, `my-app-deploy-prod`), each holding its role ARN as the environment variable `AWS_ROLE_ARN`.
 - Never put AWS credentials, account secrets or keys in the repo or workflow files.
 
 ## Deployment roadmap
@@ -55,7 +55,7 @@ Run lint, test and build before committing.
 1. Identity: GitHub OIDC provider and least-privilege deploy role — done
 2. Hosting as code: private S3, CloudFront with OAC, security headers — done (`infra/site.yml`, deployed as stack `my-app-staging`)
 3. Continuous deployment to one environment on push to `main` — done; staging is https://d1qpoq0ceicfnl.cloudfront.net
-4. Staging and production with an approval gate, same artifact promoted
+4. Staging and production with an approval gate, same artifact promoted — done; prod is https://d1v74xn41zdn4.cloudfront.net
 5. Operations: rollback, logging and alarms, branch protection
 
 Update this list as stages are completed.
