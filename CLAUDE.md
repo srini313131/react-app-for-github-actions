@@ -31,7 +31,8 @@ Run lint, test and build before committing.
 - `src/` — app code; tests sit next to the code as `*.test.tsx`
 - `src/setupTests.ts` — jest-dom matchers and RTL cleanup
 - `vite.config.ts` — Vite and Vitest config
-- `.github/workflows/ci.yml` — `build` job: install, lint, test, build, upload `dist` artifact; `deploy` job (pushes to `main` only): deploy `infra/site.yml` as stack `my-app-staging`, upload `dist` to S3, clear the CloudFront cache
+- `.github/workflows/ci.yml` — `build` job: install, lint, test, build, upload `dist` artifact; on pushes to `main`, `deploy-staging` then `deploy-prod` (waits for approval), both deploying the same artifact
+- `.github/workflows/deploy.yml` — reusable deploy to one environment: stack `my-app-<environment>` from `infra/site.yml`, upload `dist` to S3, clear the CloudFront cache
 - `infra/` — CloudFormation templates
 - `docs/plans/` — one plan doc per feature or stage; `README.md` there is the index
 - `docs/interview-notes.md` — interview notes per stage
